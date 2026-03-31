@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "mathdrill"
+version = "0.1.0"
+description = "terminal math drills for competitive coding"
+requires-python = ">=3.9"
+dependencies = [
+    "rich>=13.0",
+]
+
+[project.scripts]
+mathdrill = "mathdrill.cli:main"
