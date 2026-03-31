@@ -93,7 +93,7 @@ def bitwise(difficulty=1):
     elif variant == "xor":
         return {
             "category": "Bitwise",
-            "question": f"What is {a} ^ {b}?",
+            "question": f"What is {a} XOR {b}?",
             "answer": a ^ b,
         }
     else:
