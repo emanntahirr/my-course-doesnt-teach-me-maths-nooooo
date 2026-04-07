@@ -4,6 +4,7 @@ from rich.panel import Panel
 from rich.text import Text
 from rich.table import Table
 from mathdrill.questions import random_question, CATEGORIES
+from mathdrill.stats import save_session, streak_message
 
 console = Console()
 
@@ -31,12 +32,14 @@ def _check_answer(user_input, question):
 def run_drill(num_questions=5, difficulty=1, category=None):
     console.clear()
     console.print()
+    smsg = streak_message()
     console.print(
         Panel(
             "[bold magenta]MATH DRILL[/bold magenta]\n"
             f"[dim]{num_questions} questions  •  "
             f"difficulty {'★' * difficulty}{'☆' * (3 - difficulty)}  •  "
-            f"{'all categories' if not category else category}[/dim]",
+            f"{'all categories' if not category else category}[/dim]\n"
+            f"{smsg}",
             border_style="bright_magenta",
         )
     )
@@ -95,6 +98,8 @@ def run_drill(num_questions=5, difficulty=1, category=None):
             "time": elapsed,
         })
 
+    avg_time = sum(r["time"] for r in results) / len(results)
+    save_session(score, num_questions, difficulty, category, avg_time)
     _show_summary(results, score, num_questions, best_streak)
 
 
