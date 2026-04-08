@@ -2,6 +2,9 @@ import json
 from datetime import date, timedelta
 from pathlib import Path
 
+from rich.console import Console
+from rich.table import Table
+
 DATA_DIR = Path.home() / ".mathdrill"
 HISTORY_FILE = DATA_DIR / "history.json"
 
@@ -86,3 +89,55 @@ def streak_message():
         elif streak >= 1:
             return f"{streak}-day streak — don't break the chain!"
         return "First session! Start your streak today."
+
+
+def show_stats():
+    console = Console()
+    history = load_history()
+    sessions = history["sessions"]
+
+    if not sessions:
+        console.print("\nno sessions yet. run a drill first!\n")
+        return
+
+    streak = get_streak()
+    total_sessions = len(sessions)
+    total_questions = sum(s["total"] for s in sessions)
+    total_correct = sum(s["score"] for s in sessions)
+    overall_pct = (total_correct / total_questions) * 100 if total_questions else 0
+    avg_time = sum(s["avg_time"] for s in sessions) / total_sessions
+
+    console.print()
+    table = Table(show_header=False, box=None, padding=(0, 2))
+    table.add_column(style="dim")
+    table.add_column(style="bold")
+
+    table.add_row("current streak", f"{streak} days")
+    table.add_row("total sessions", str(total_sessions))
+    table.add_row("total questions", str(total_questions))
+    table.add_row("overall accuracy", f"{total_correct}/{total_questions} ({overall_pct:.0f}%)")
+    table.add_row("avg time", f"{avg_time:.1f}s")
+
+    # per-category breakdown
+    cats = {}
+    for s in sessions:
+        cat = s.get("category") or "mixed"
+        if cat not in cats:
+            cats[cat] = {"score": 0, "total": 0}
+        cats[cat]["score"] += s["score"]
+        cats[cat]["total"] += s["total"]
+
+    console.print(table)
+    console.print()
+
+    if len(cats) > 1 or "mixed" not in cats:
+        cat_table = Table(title="by category", box=None, padding=(0, 2))
+        cat_table.add_column("category", style="dim")
+        cat_table.add_column("score", style="bold")
+
+        for cat, data in sorted(cats.items()):
+            pct = (data["score"] / data["total"]) * 100 if data["total"] else 0
+            cat_table.add_row(cat, f"{data['score']}/{data['total']} ({pct:.0f}%)")
+
+        console.print(cat_table)
+        console.print()

@@ -1,6 +1,7 @@
 import argparse
 from mathdrill.engine import run_drill
 from mathdrill.questions import CATEGORIES
+from mathdrill.stats import show_stats
 
 
 def main():
@@ -29,8 +30,18 @@ def main():
         default=None,
         help="focus on a specific category",
     )
+    parser.add_argument(
+        "--stats",
+        action="store_true",
+        help="view your practice history and streak",
+    )
 
     args = parser.parse_args()
+
+    if args.stats:
+        show_stats()
+        return
+
     run_drill(
         num_questions=args.num,
         difficulty=args.difficulty,
