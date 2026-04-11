@@ -36,6 +36,10 @@ by default you get 5 questions at difficulty 1 across all categories.
 
 `-c CATEGORY` focus on one category instead of all of them
 
+`--adaptive` auto-scales difficulty based on how you're doing. get 3 right in a row and it bumps up, get 3 wrong in a row and it drops down
+
+`--stats` view your practice history, streak, and accuracy
+
 ## categories
 
 `modular` `gcd` `bitwise` `base` `primes` `combinatorics`
@@ -58,6 +62,18 @@ hard primes drill, 20 questions:
 
 ```
 mathdrill -c primes -d 3 -n 20
+```
+
+adaptive mode:
+
+```
+mathdrill --adaptive
+```
+
+check your stats:
+
+```
+mathdrill --stats
 ```
 
 ## what to expect

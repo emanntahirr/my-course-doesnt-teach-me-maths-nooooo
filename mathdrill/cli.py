@@ -35,6 +35,11 @@ def main():
         action="store_true",
         help="view your practice history and streak",
     )
+    parser.add_argument(
+        "--adaptive",
+        action="store_true",
+        help="auto-scale difficulty based on how you're doing",
+    )
 
     args = parser.parse_args()
 
@@ -46,6 +51,7 @@ def main():
         num_questions=args.num,
         difficulty=args.difficulty,
         category=args.category,
+        adaptive=args.adaptive,
     )
 
 
