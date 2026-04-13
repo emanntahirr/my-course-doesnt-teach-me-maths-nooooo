@@ -38,6 +38,8 @@ by default you get 5 questions at difficulty 1 across all categories.
 
 `--adaptive` auto-scales difficulty based on how you're doing. get 3 right in a row and it bumps up, get 3 wrong in a row and it drops down
 
+`--weakspot` focuses on the categories you're worst at based on your history. 70% of questions come from your weak spots, 30% random
+
 `--stats` view your practice history, streak, and accuracy
 
 ## categories
@@ -68,6 +70,12 @@ adaptive mode:
 
 ```
 mathdrill --adaptive
+```
+
+drill your weak spots:
+
+```
+mathdrill --weakspot
 ```
 
 check your stats:

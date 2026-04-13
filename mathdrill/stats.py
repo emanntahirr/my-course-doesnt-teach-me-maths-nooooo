@@ -35,6 +35,50 @@ def save_session(score, total, difficulty, category, avg_time):
         json.dump(history, f, indent=2)
 
 
+def save_question_results(question_results):
+    _ensure_data_dir()
+    history = load_history()
+    if "questions" not in history:
+        history["questions"] = []
+    for r in question_results:
+        history["questions"].append({
+            "date": date.today().isoformat(),
+            "category": r["category"],
+            "correct": r["correct"],
+        })
+    with open(HISTORY_FILE, "w") as f:
+        json.dump(history, f, indent=2)
+
+
+def get_weak_categories():
+    history = load_history()
+    questions = history.get("questions", [])
+    if not questions:
+        return None
+
+    cats = {}
+    for q in questions:
+        cat = q["category"]
+        if cat not in cats:
+            cats[cat] = {"correct": 0, "total": 0}
+        cats[cat]["total"] += 1
+        if q["correct"]:
+            cats[cat]["correct"] += 1
+
+    scored = []
+    for cat, data in cats.items():
+        pct = data["correct"] / data["total"] if data["total"] else 1
+        scored.append((cat, pct))
+
+    scored.sort(key=lambda x: x[1])
+
+    if not scored or scored[0][1] >= 0.8:
+        return None
+
+    weak = [cat for cat, pct in scored if pct < 0.8]
+    return weak if weak else None
+
+
 def get_streak():
     history = load_history()
     if not history["sessions"]:

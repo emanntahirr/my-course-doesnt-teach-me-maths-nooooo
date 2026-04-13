@@ -40,6 +40,11 @@ def main():
         action="store_true",
         help="auto-scale difficulty based on how you're doing",
     )
+    parser.add_argument(
+        "--weakspot",
+        action="store_true",
+        help="focus on categories you're weakest at",
+    )
 
     args = parser.parse_args()
 
@@ -52,6 +57,7 @@ def main():
         difficulty=args.difficulty,
         category=args.category,
         adaptive=args.adaptive,
+        weakspot=args.weakspot,
     )
 
 

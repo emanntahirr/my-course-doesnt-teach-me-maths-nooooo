@@ -3,8 +3,8 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 from rich.table import Table
-from mathdrill.questions import random_question, CATEGORIES
-from mathdrill.stats import save_session, streak_message
+from mathdrill.questions import random_question, weakspot_question, CATEGORIES
+from mathdrill.stats import save_session, save_question_results, streak_message, get_weak_categories
 
 console = Console()
 
@@ -40,11 +40,18 @@ def _adapt_difficulty(current, recent_results):
     return current
 
 
-def run_drill(num_questions=5, difficulty=1, category=None, adaptive=False):
+def run_drill(num_questions=5, difficulty=1, category=None, adaptive=False, weakspot=False):
     console.clear()
     console.print()
     smsg = streak_message()
+
+    weak_cats = None
+    if weakspot:
+        weak_cats = get_weak_categories()
+
     mode = "adaptive" if adaptive else f"difficulty {'★' * difficulty}{'☆' * (3 - difficulty)}"
+    if weakspot:
+        mode += "  •  weak spot targeting"
     console.print(
         Panel(
             "[bold magenta]MATH DRILL[/bold magenta]\n"
@@ -55,6 +62,11 @@ def run_drill(num_questions=5, difficulty=1, category=None, adaptive=False):
             border_style="bright_magenta",
         )
     )
+
+    if weakspot and weak_cats:
+        console.print(f"  [dim]focusing on: {', '.join(weak_cats)}[/dim]")
+    elif weakspot:
+        console.print("  [dim]no weak spots found yet, using all categories[/dim]")
     console.print()
 
     score = 0
@@ -67,7 +79,10 @@ def run_drill(num_questions=5, difficulty=1, category=None, adaptive=False):
         if adaptive:
             current_difficulty = _adapt_difficulty(current_difficulty, results)
 
-        q = random_question(current_difficulty, category)
+        if weakspot and not category:
+            q = weakspot_question(current_difficulty, weak_cats)
+        else:
+            q = random_question(current_difficulty, category)
 
         console.rule(style="dim")
         header = _header(i, num_questions, score, streak)
@@ -119,6 +134,7 @@ def run_drill(num_questions=5, difficulty=1, category=None, adaptive=False):
 
     avg_time = sum(r["time"] for r in results) / len(results)
     save_session(score, num_questions, difficulty, category, avg_time)
+    save_question_results(results)
     _show_summary(results, score, num_questions, best_streak)
 
 

@@ -243,9 +243,40 @@ CATEGORIES = {
 }
 
 
+CATEGORY_DISPLAY_TO_KEY = {
+    "Modular Arithmetic": "modular",
+    "GCD / LCM": "gcd",
+    "Bitwise": "bitwise",
+    "Base Conversion": "base",
+    "Primes": "primes",
+    "Combinatorics": "combinatorics",
+}
+
+
 def random_question(difficulty=1, category=None):
     if category and category in CATEGORIES:
         gen = CATEGORIES[category]
     else:
         gen = random.choice(list(CATEGORIES.values()))
     return gen(difficulty)
+
+
+def weakspot_question(difficulty=1, weak_categories=None):
+    if not weak_categories:
+        return random_question(difficulty)
+
+    # map display names back to keys
+    weak_keys = []
+    for cat in weak_categories:
+        key = CATEGORY_DISPLAY_TO_KEY.get(cat, cat)
+        if key in CATEGORIES:
+            weak_keys.append(key)
+
+    if not weak_keys:
+        return random_question(difficulty)
+
+    # 70% chance to pick from a weak category, 30% random
+    if random.random() < 0.7:
+        key = random.choice(weak_keys)
+        return CATEGORIES[key](difficulty)
+    return random_question(difficulty)
