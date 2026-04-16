@@ -40,6 +40,8 @@ by default you get 5 questions at difficulty 1 across all categories.
 
 `--weakspot` focuses on the categories you're worst at based on your history. 70% of questions come from your weak spots, 30% random
 
+`--review` spaced repetition mode. uses SM-2 to schedule review of question types you've seen before. questions you get wrong come back sooner, ones you nail get pushed further out
+
 `--stats` view your practice history, streak, and accuracy
 
 ## categories
@@ -76,6 +78,12 @@ drill your weak spots:
 
 ```
 mathdrill --weakspot
+```
+
+spaced repetition review:
+
+```
+mathdrill --review
 ```
 
 check your stats:

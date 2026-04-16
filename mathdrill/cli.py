@@ -1,5 +1,5 @@
 import argparse
-from mathdrill.engine import run_drill
+from mathdrill.engine import run_drill, run_review
 from mathdrill.questions import CATEGORIES
 from mathdrill.stats import show_stats
 
@@ -45,11 +45,20 @@ def main():
         action="store_true",
         help="focus on categories you're weakest at",
     )
+    parser.add_argument(
+        "--review",
+        action="store_true",
+        help="spaced repetition review of question types you've seen before",
+    )
 
     args = parser.parse_args()
 
     if args.stats:
         show_stats()
+        return
+
+    if args.review:
+        run_review(difficulty=args.difficulty)
         return
 
     run_drill(

@@ -41,11 +41,14 @@ def save_question_results(question_results):
     if "questions" not in history:
         history["questions"] = []
     for r in question_results:
-        history["questions"].append({
+        entry = {
             "date": date.today().isoformat(),
             "category": r["category"],
             "correct": r["correct"],
-        })
+        }
+        if "question_type" in r:
+            entry["question_type"] = r["question_type"]
+        history["questions"].append(entry)
     with open(HISTORY_FILE, "w") as f:
         json.dump(history, f, indent=2)
 
@@ -133,6 +136,110 @@ def streak_message():
         elif streak >= 1:
             return f"{streak}-day streak — don't break the chain!"
         return "First session! Start your streak today."
+
+
+# ── spaced repetition (SM-2) ────────────────────────────────────────
+
+REVIEW_FILE = DATA_DIR / "review.json"
+
+
+def _load_review_cards():
+    if not REVIEW_FILE.exists():
+        return {}
+    with open(REVIEW_FILE) as f:
+        return json.load(f)
+
+
+def _save_review_cards(cards):
+    _ensure_data_dir()
+    with open(REVIEW_FILE, "w") as f:
+        json.dump(cards, f, indent=2)
+
+
+def update_review_card(question_type, correct):
+    """Update SM-2 data for a question type after answering it."""
+    cards = _load_review_cards()
+    today = date.today().isoformat()
+
+    if question_type not in cards:
+        cards[question_type] = {
+            "ef": 2.5,
+            "interval": 1,
+            "repetitions": 0,
+            "next_review": today,
+        }
+
+    card = cards[question_type]
+
+    # SM-2: quality 4 for correct, 1 for wrong
+    q = 4 if correct else 1
+    card["ef"] = max(1.3, card["ef"] + 0.1 - (5 - q) * (0.08 + (5 - q) * 0.02))
+
+    if correct:
+        card["repetitions"] += 1
+        if card["repetitions"] == 1:
+            card["interval"] = 1
+        elif card["repetitions"] == 2:
+            card["interval"] = 3
+        else:
+            card["interval"] = round(card["interval"] * card["ef"])
+    else:
+        card["repetitions"] = 0
+        card["interval"] = 1
+
+    next_date = date.today() + timedelta(days=card["interval"])
+    card["next_review"] = next_date.isoformat()
+
+    cards[question_type] = card
+    _save_review_cards(cards)
+
+
+def get_due_reviews():
+    """Return list of question_types that are due for review today or earlier."""
+    cards = _load_review_cards()
+    today = date.today().isoformat()
+    due = [qt for qt, card in cards.items() if card["next_review"] <= today]
+    # sort by next_review (oldest first) then by easiness (hardest first)
+    due.sort(key=lambda qt: (cards[qt]["next_review"], cards[qt]["ef"]))
+    return due
+
+
+def seed_review_from_history():
+    """Create review cards from existing question history for users who already have data."""
+    history = load_history()
+    questions = history.get("questions", [])
+    if not questions:
+        return 0
+
+    cards = _load_review_cards()
+    seeded = 0
+    # group by question_type if present, otherwise by category
+    type_stats = {}
+    for q in questions:
+        qt = q.get("question_type")
+        if not qt:
+            continue
+        if qt not in type_stats:
+            type_stats[qt] = {"correct": 0, "total": 0}
+        type_stats[qt]["total"] += 1
+        if q["correct"]:
+            type_stats[qt]["correct"] += 1
+
+    today = date.today().isoformat()
+    for qt, data in type_stats.items():
+        if qt not in cards:
+            pct = data["correct"] / data["total"] if data["total"] else 0.5
+            cards[qt] = {
+                "ef": max(1.3, 1.3 + pct * 1.2),
+                "interval": 1,
+                "repetitions": 0,
+                "next_review": today,
+            }
+            seeded += 1
+
+    if seeded:
+        _save_review_cards(cards)
+    return seeded
 
 
 def show_stats():

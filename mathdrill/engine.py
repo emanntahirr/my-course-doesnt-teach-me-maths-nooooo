@@ -3,8 +3,11 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 from rich.table import Table
-from mathdrill.questions import random_question, weakspot_question, CATEGORIES
-from mathdrill.stats import save_session, save_question_results, streak_message, get_weak_categories
+from mathdrill.questions import random_question, weakspot_question, question_by_type, CATEGORIES
+from mathdrill.stats import (
+    save_session, save_question_results, streak_message, get_weak_categories,
+    update_review_card, get_due_reviews, seed_review_from_history,
+)
 
 console = Console()
 
@@ -100,8 +103,10 @@ def run_drill(num_questions=5, difficulty=1, category=None, adaptive=False, weak
             return
 
         elapsed = time.time() - start
+        correct = _check_answer(answer, q)
+        qt = q.get("question_type", "")
 
-        if _check_answer(answer, q):
+        if correct:
             score += 1
             streak += 1
             best_streak = max(best_streak, streak)
@@ -124,11 +129,14 @@ def run_drill(num_questions=5, difficulty=1, category=None, adaptive=False, weak
                 f"[dim]({elapsed:.1f}s)[/dim]"
             )
         console.print()
+        if qt:
+            update_review_card(qt, correct)
 
         results.append({
             "category": q["category"],
+            "question_type": qt,
             "question": q["question"],
-            "correct": _check_answer(answer, q),
+            "correct": correct,
             "time": elapsed,
         })
 
@@ -182,3 +190,101 @@ def _show_summary(results, score, total, best_streak):
 
     console.print(table)
     console.print()
+
+
+def run_review(difficulty=1):
+    console.clear()
+    console.print()
+
+    due = get_due_reviews()
+
+    if not due:
+        # try seeding from history if this is a first-time review user
+        seeded = seed_review_from_history()
+        if seeded:
+            due = get_due_reviews()
+
+    if not due:
+        console.print(
+            Panel(
+                "[bold magenta]REVIEW[/bold magenta]\n"
+                "[dim]nothing due for review! run a regular drill first to "
+                "build up your review queue, or come back tomorrow.[/dim]",
+                border_style="bright_magenta",
+            )
+        )
+        console.print()
+        return
+
+    console.print(
+        Panel(
+            "[bold magenta]REVIEW MODE[/bold magenta]\n"
+            f"[dim]{len(due)} question type{'s' if len(due) != 1 else ''} due for review  •  "
+            f"spaced repetition (SM-2)[/dim]\n"
+            f"{streak_message()}",
+            border_style="bright_magenta",
+        )
+    )
+    console.print()
+
+    score = 0
+    streak = 0
+    best_streak = 0
+    results = []
+
+    for i, qt in enumerate(due, 1):
+        q = question_by_type(qt, difficulty)
+
+        console.rule(style="dim")
+        header = _header(i, len(due), score, streak)
+        console.print(header)
+        console.print(f"\n  [bold yellow]{q['category']}[/bold yellow]  [dim](review)[/dim]")
+        console.print(f"\n  {q['question']}\n")
+
+        start = time.time()
+        try:
+            answer = console.input("[bold green]> [/bold green]")
+        except (KeyboardInterrupt, EOFError):
+            console.print("\n[dim]quitting...[/dim]")
+            return
+
+        elapsed = time.time() - start
+        correct = _check_answer(answer, q)
+
+        if correct:
+            score += 1
+            streak += 1
+            best_streak = max(best_streak, streak)
+
+            speed_msg = ""
+            if elapsed < 2:
+                speed_msg = " ⚡ lightning fast!"
+            elif elapsed < 5:
+                speed_msg = " nice speed!"
+
+            console.print(
+                f"  [bold green]✓ Correct![/bold green] "
+                f"[dim]({elapsed:.1f}s){speed_msg}[/dim]"
+            )
+        else:
+            streak = 0
+            console.print(
+                f"  [bold red]✗ Wrong.[/bold red] "
+                f"Answer was [bold]{q['answer']}[/bold]  "
+                f"[dim]({elapsed:.1f}s)[/dim]"
+            )
+        console.print()
+
+        update_review_card(qt, correct)
+        results.append({
+            "category": q["category"],
+            "question_type": qt,
+            "question": q["question"],
+            "correct": correct,
+            "time": elapsed,
+        })
+
+    avg_time = sum(r["time"] for r in results) / len(results)
+    save_session(score, len(due), difficulty, "review", avg_time)
+    save_question_results(results)
+    _show_summary(results, score, len(due), best_streak)

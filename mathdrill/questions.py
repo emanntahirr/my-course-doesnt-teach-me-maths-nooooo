@@ -30,12 +30,15 @@ def mod_arithmetic(difficulty=1):
         answer = pow(a, exp, m)
         return {
             "category": "Modular Arithmetic",
+            "question_type": "mod_pow",
             "question": f"What is pow({a}, {exp}, {m})?",
             "answer": answer,
         }
 
+    op_tag = {"+": "add", "-": "sub", "*": "mul"}[op]
     return {
         "category": "Modular Arithmetic",
+        "question_type": f"mod_{op_tag}",
         "question": f"What is ({a} {op} {b}) % {m}?",
         "answer": answer,
     }
@@ -54,6 +57,7 @@ def gcd_lcm(difficulty=1):
     if random.random() < 0.5:
         return {
             "category": "GCD / LCM",
+            "question_type": "gcd",
             "question": f"What is gcd({a}, {b})?",
             "answer": math.gcd(a, b),
         }
@@ -61,6 +65,7 @@ def gcd_lcm(difficulty=1):
         lcm = (a * b) // math.gcd(a, b)
         return {
             "category": "GCD / LCM",
+            "question_type": "lcm",
             "question": f"What is lcm({a}, {b})?",
             "answer": lcm,
         }
@@ -81,18 +86,21 @@ def bitwise(difficulty=1):
     if variant == "and":
         return {
             "category": "Bitwise",
+            "question_type": "bit_and",
             "question": f"What is {a} & {b}?",
             "answer": a & b,
         }
     elif variant == "or":
         return {
             "category": "Bitwise",
+            "question_type": "bit_or",
             "question": f"What is {a} | {b}?",
             "answer": a | b,
         }
     elif variant == "xor":
         return {
             "category": "Bitwise",
+            "question_type": "bit_xor",
             "question": f"What is {a} XOR {b}?",
             "answer": a ^ b,
         }
@@ -100,6 +108,7 @@ def bitwise(difficulty=1):
         n = _rand(1, 255)
         return {
             "category": "Bitwise",
+            "question_type": "bit_popcount",
             "question": f"How many 1-bits in the binary representation of {n}?",
             "answer": bin(n).count("1"),
         }
@@ -120,6 +129,7 @@ def base_conversion(difficulty=1):
     if variant == "to_bin":
         return {
             "category": "Base Conversion",
+            "question_type": "base_to_bin",
             "question": f"Convert {n} to binary (no 0b prefix).",
             "answer": bin(n)[2:],
             "string_answer": True,
@@ -128,12 +138,14 @@ def base_conversion(difficulty=1):
         b = bin(n)[2:]
         return {
             "category": "Base Conversion",
+            "question_type": "base_from_bin",
             "question": f"Convert binary {b} to decimal.",
             "answer": n,
         }
     else:
         return {
             "category": "Base Conversion",
+            "question_type": "base_to_hex",
             "question": f"Convert {n} to hexadecimal (lowercase, no 0x prefix).",
             "answer": hex(n)[2:],
             "string_answer": True,
@@ -177,6 +189,7 @@ def primes(difficulty=1):
     if variant == "is_prime":
         return {
             "category": "Primes",
+            "question_type": "is_prime",
             "question": f"Is {n} prime? (yes/no)",
             "answer": "yes" if _is_prime(n) else "no",
             "string_answer": True,
@@ -188,6 +201,7 @@ def primes(difficulty=1):
                 n = _rand(4, 100)
         return {
             "category": "Primes",
+            "question_type": "smallest_factor",
             "question": f"What is the smallest prime factor of {n}?",
             "answer": _prime_factors(n)[0],
         }
@@ -197,6 +211,7 @@ def primes(difficulty=1):
         pf = _prime_factors(n)
         return {
             "category": "Primes",
+            "question_type": "num_factors",
             "question": f"How many prime factors does {n} have (with multiplicity)?",
             "answer": len(pf),
         }
@@ -219,6 +234,7 @@ def combinatorics(difficulty=1):
         answer = math.comb(n, r)
         return {
             "category": "Combinatorics",
+            "question_type": "combination",
             "question": f"What is C({n}, {r})?",
             "answer": answer,
         }
@@ -226,6 +242,7 @@ def combinatorics(difficulty=1):
         answer = math.perm(n, r)
         return {
             "category": "Combinatorics",
+            "question_type": "permutation",
             "question": f"What is P({n}, {r})?",
             "answer": answer,
         }
@@ -258,6 +275,29 @@ def random_question(difficulty=1, category=None):
         gen = CATEGORIES[category]
     else:
         gen = random.choice(list(CATEGORIES.values()))
+    return gen(difficulty)
+
+
+QUESTION_TYPE_TO_GENERATOR = {
+    "mod_add": "modular", "mod_sub": "modular", "mod_mul": "modular", "mod_pow": "modular",
+    "gcd": "gcd", "lcm": "gcd",
+    "bit_and": "bitwise", "bit_or": "bitwise", "bit_xor": "bitwise", "bit_popcount": "bitwise",
+    "base_to_bin": "base", "base_from_bin": "base", "base_to_hex": "base",
+    "is_prime": "primes", "smallest_factor": "primes", "num_factors": "primes",
+    "combination": "combinatorics", "permutation": "combinatorics",
+}
+
+
+def question_by_type(question_type, difficulty=1):
+    """Generate a question of the specific type. Retries until the right variant comes up."""
+    cat_key = QUESTION_TYPE_TO_GENERATOR.get(question_type)
+    if not cat_key or cat_key not in CATEGORIES:
+        return random_question(difficulty)
+    gen = CATEGORIES[cat_key]
+    for _ in range(50):
+        q = gen(difficulty)
+        if q.get("question_type") == question_type:
+            return q
     return gen(difficulty)
 
 
