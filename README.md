@@ -46,7 +46,7 @@ by default you get 5 questions at difficulty 1 across all categories.
 
 ## categories
 
-`modular` `gcd` `bitwise` `base` `primes` `combinatorics`
+`modular` `gcd` `bitwise` `base` `primes` `combinatorics` `logarithms` `probability`
 
 ## examples
 

@@ -248,6 +248,227 @@ def combinatorics(difficulty=1):
         }
 
 
+# ── logarithms ──────────────────────────────────────────────────────
+
+def logarithms(difficulty=1):
+    if difficulty == 1:
+        # powers of 2 and 10 — clean answers
+        variant = random.choice(["log2_exact", "log10_exact"])
+        if variant == "log2_exact":
+            exp = _rand(1, 8)
+            n = 2 ** exp
+            return {
+                "category": "Logarithms",
+                "question_type": "log2_exact",
+                "question": f"What is log2({n})?",
+                "answer": exp,
+            }
+        else:
+            exp = _rand(1, 5)
+            n = 10 ** exp
+            return {
+                "category": "Logarithms",
+                "question_type": "log10_exact",
+                "question": f"What is log10({n})?",
+                "answer": exp,
+            }
+    elif difficulty == 2:
+        variant = random.choice(["floor_log2", "floor_log10", "log_product"])
+        if variant == "floor_log2":
+            n = _rand(3, 500)
+            return {
+                "category": "Logarithms",
+                "question_type": "floor_log2",
+                "question": f"What is floor(log2({n}))?",
+                "answer": int(math.log2(n)),
+            }
+        elif variant == "floor_log10":
+            n = _rand(2, 50000)
+            return {
+                "category": "Logarithms",
+                "question_type": "floor_log10",
+                "question": f"What is floor(log10({n}))? (i.e. how many digits minus 1)",
+                "answer": int(math.log10(n)),
+            }
+        else:
+            # log(a*b) = log(a) + log(b)
+            a_exp = _rand(1, 5)
+            b_exp = _rand(1, 5)
+            a = 2 ** a_exp
+            b = 2 ** b_exp
+            return {
+                "category": "Logarithms",
+                "question_type": "log_product",
+                "question": f"What is log2({a} * {b})?",
+                "answer": a_exp + b_exp,
+            }
+    else:
+        variant = random.choice(["floor_log2_hard", "log_power", "num_digits"])
+        if variant == "floor_log2_hard":
+            n = _rand(100, 10000)
+            return {
+                "category": "Logarithms",
+                "question_type": "floor_log2",
+                "question": f"What is floor(log2({n}))?",
+                "answer": int(math.log2(n)),
+            }
+        elif variant == "log_power":
+            # log_b(b^k) = k
+            base = random.choice([2, 3, 5, 10])
+            exp = _rand(2, 6)
+            n = base ** exp
+            return {
+                "category": "Logarithms",
+                "question_type": "log_power",
+                "question": f"What is log base {base} of {n}?",
+                "answer": exp,
+            }
+        else:
+            # how many digits does n have?
+            n = _rand(1, 9) * (10 ** _rand(2, 8))
+            digits = len(str(n))
+            return {
+                "category": "Logarithms",
+                "question_type": "num_digits",
+                "question": f"How many digits does {n} have?",
+                "answer": digits,
+            }
+
+
+# ── probability ─────────────────────────────────────────────────────
+
+def _simplify_fraction(num, den):
+    g = math.gcd(num, den)
+    return num // g, den // g
+
+
+def probability(difficulty=1):
+    if difficulty == 1:
+        variant = random.choice(["coin", "dice", "simple_draw"])
+        if variant == "coin":
+            n = _rand(2, 4)
+            # probability of all heads in n flips = 1/2^n
+            den = 2 ** n
+            return {
+                "category": "Probability",
+                "question_type": "prob_coin",
+                "question": f"What is the probability of getting all heads in {n} fair coin flips? (answer as a fraction like 1/{den})",
+                "answer": f"1/{den}",
+                "string_answer": True,
+            }
+        elif variant == "dice":
+            target = _rand(1, 6)
+            return {
+                "category": "Probability",
+                "question_type": "prob_dice",
+                "question": f"What is the probability of rolling a {target} on a fair 6-sided die? (answer as a fraction)",
+                "answer": "1/6",
+                "string_answer": True,
+            }
+        else:
+            # drawing from a bag
+            red = _rand(1, 5)
+            blue = _rand(1, 5)
+            total = red + blue
+            num, den = _simplify_fraction(red, total)
+            return {
+                "category": "Probability",
+                "question_type": "prob_draw",
+                "question": f"A bag has {red} red and {blue} blue balls. What is the probability of drawing red? (fraction)",
+                "answer": f"{num}/{den}",
+                "string_answer": True,
+            }
+    elif difficulty == 2:
+        variant = random.choice(["dice_sum", "at_least_one", "expected_dice"])
+        if variant == "dice_sum":
+            target = _rand(2, 7)
+            # count ways to get target with 2 dice
+            ways = sum(1 for a in range(1, 7) for b in range(1, 7) if a + b == target)
+            num, den = _simplify_fraction(ways, 36)
+            return {
+                "category": "Probability",
+                "question_type": "prob_dice_sum",
+                "question": f"Rolling 2 fair dice, what is the probability the sum is {target}? (fraction)",
+                "answer": f"{num}/{den}",
+                "string_answer": True,
+            }
+        elif variant == "at_least_one":
+            # P(at least one head in n flips) = 1 - 1/2^n
+            n = _rand(2, 5)
+            den = 2 ** n
+            num_ans = den - 1
+            num_s, den_s = _simplify_fraction(num_ans, den)
+            return {
+                "category": "Probability",
+                "question_type": "prob_at_least",
+                "question": f"What is P(at least one head in {n} fair coin flips)? (fraction)",
+                "answer": f"{num_s}/{den_s}",
+                "string_answer": True,
+            }
+        else:
+            # expected value of a die roll
+            sides = random.choice([4, 6, 8])
+            # E[X] = (sides+1)/2
+            num, den = _simplify_fraction(sides + 1, 2)
+            ans = f"{num}/{den}" if den > 1 else str(num)
+            return {
+                "category": "Probability",
+                "question_type": "prob_expected",
+                "question": f"What is the expected value of rolling a fair {sides}-sided die (1 to {sides})? (fraction or integer)",
+                "answer": ans,
+                "string_answer": True,
+            }
+    else:
+        variant = random.choice(["conditional", "combo_prob", "repeated"])
+        if variant == "conditional":
+            # two draws without replacement
+            red = _rand(3, 8)
+            blue = _rand(3, 8)
+            total = red + blue
+            # P(2nd red | 1st red) = (red-1)/(total-1)
+            num, den = _simplify_fraction(red - 1, total - 1)
+            return {
+                "category": "Probability",
+                "question_type": "prob_conditional",
+                "question": (
+                    f"A bag has {red} red and {blue} blue balls. You draw one red ball "
+                    f"(without replacement). What is P(2nd draw is also red)? (fraction)"
+                ),
+                "answer": f"{num}/{den}",
+                "string_answer": True,
+            }
+        elif variant == "combo_prob":
+            # choosing a committee: P(all from one group)
+            n = _rand(3, 6)
+            k = _rand(2, min(n, 3))
+            total_pool = n + _rand(3, 6)
+            ways_good = math.comb(n, k)
+            ways_total = math.comb(total_pool, k)
+            num, den = _simplify_fraction(ways_good, ways_total)
+            return {
+                "category": "Probability",
+                "question_type": "prob_combo",
+                "question": (
+                    f"From a group of {total_pool} people ({n} women, {total_pool - n} men), "
+                    f"choosing {k} at random. P(all women)? (fraction)"
+                ),
+                "answer": f"{num}/{den}",
+                "string_answer": True,
+            }
+        else:
+            # P(specific outcome in n independent trials)
+            n = _rand(3, 5)
+            # P(all sixes in n dice rolls) = 1/6^n
+            den = 6 ** n
+            return {
+                "category": "Probability",
+                "question_type": "prob_repeated",
+                "question": f"What is P(rolling a 6 on all {n} rolls of a fair die)? (fraction)",
+                "answer": f"1/{den}",
+                "string_answer": True,
+            }
+
+
 # ── registry ─────────────────────────────────────────────────────────
 
 CATEGORIES = {
@@ -257,6 +478,8 @@ CATEGORIES = {
     "base": base_conversion,
     "primes": primes,
     "combinatorics": combinatorics,
+    "logarithms": logarithms,
+    "probability": probability,
 }
 
 
@@ -267,6 +490,8 @@ CATEGORY_DISPLAY_TO_KEY = {
     "Base Conversion": "base",
     "Primes": "primes",
     "Combinatorics": "combinatorics",
+    "Logarithms": "logarithms",
+    "Probability": "probability",
 }
 
 
@@ -285,6 +510,12 @@ QUESTION_TYPE_TO_GENERATOR = {
     "base_to_bin": "base", "base_from_bin": "base", "base_to_hex": "base",
     "is_prime": "primes", "smallest_factor": "primes", "num_factors": "primes",
     "combination": "combinatorics", "permutation": "combinatorics",
+    "log2_exact": "logarithms", "log10_exact": "logarithms", "floor_log2": "logarithms",
+    "floor_log10": "logarithms", "log_product": "logarithms", "log_power": "logarithms",
+    "num_digits": "logarithms",
+    "prob_coin": "probability", "prob_dice": "probability", "prob_draw": "probability",
+    "prob_dice_sum": "probability", "prob_at_least": "probability", "prob_expected": "probability",
+    "prob_conditional": "probability", "prob_combo": "probability", "prob_repeated": "probability",
 }
 
 
