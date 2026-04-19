@@ -54,20 +54,20 @@ def gcd_lcm(difficulty=1):
     else:
         a, b = _rand(100, 1000), _rand(100, 1000)
 
+    g = math.gcd(a, b)
     if random.random() < 0.5:
         return {
             "category": "GCD / LCM",
             "question_type": "gcd",
             "question": f"What is gcd({a}, {b})?",
-            "answer": math.gcd(a, b),
+            "answer": g,
         }
     else:
-        lcm = (a * b) // math.gcd(a, b)
         return {
             "category": "GCD / LCM",
             "question_type": "lcm",
             "question": f"What is lcm({a}, {b})?",
-            "answer": lcm,
+            "answer": (a * b) // g,
         }
 
 
