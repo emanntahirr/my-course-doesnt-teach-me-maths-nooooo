@@ -32,6 +32,50 @@ def _check_answer(user_input, question):
         return False
 
 
+def _ask_question(q, round_num, total, score, streak, label_suffix="", header_suffix=""):
+    """Display a question, collect input, show feedback. Returns (correct, elapsed) or None on quit."""
+    console.rule(style="dim")
+    header = _header(round_num, total, score, streak)
+    if header_suffix:
+        header += header_suffix
+    console.print(header)
+    label = f"\n  [bold yellow]{q['category']}[/bold yellow]"
+    if label_suffix:
+        label += f"  [dim]{label_suffix}[/dim]"
+    console.print(label)
+    console.print(f"\n  {q['question']}\n")
+
+    start = time.time()
+    try:
+        answer = console.input("[bold green]> [/bold green]")
+    except (KeyboardInterrupt, EOFError):
+        console.print("\n[dim]quitting...[/dim]")
+        return None
+
+    elapsed = time.time() - start
+    correct = _check_answer(answer, q)
+
+    if correct:
+        speed_msg = ""
+        if elapsed < 2:
+            speed_msg = " ⚡ lightning fast!"
+        elif elapsed < 5:
+            speed_msg = " nice speed!"
+        console.print(
+            f"  [bold green]✓ Correct![/bold green] "
+            f"[dim]({elapsed:.1f}s){speed_msg}[/dim]"
+        )
+    else:
+        console.print(
+            f"  [bold red]✗ Wrong.[/bold red] "
+            f"Answer was [bold]{q['answer']}[/bold]  "
+            f"[dim]({elapsed:.1f}s)[/dim]"
+        )
+    console.print()
+
+    return correct, elapsed
+
+
 def _adapt_difficulty(current, recent_results):
     if len(recent_results) < 3:
         return current
@@ -87,52 +131,25 @@ def run_drill(num_questions=5, difficulty=1, category=None, adaptive=False, weak
         else:
             q = random_question(current_difficulty, category)
 
-        console.rule(style="dim")
-        header = _header(i, num_questions, score, streak)
+        header_suffix = ""
         if adaptive:
-            header += f"  |  Difficulty: {'★' * current_difficulty}{'☆' * (3 - current_difficulty)}"
-        console.print(header)
-        console.print(f"\n  [bold yellow]{q['category']}[/bold yellow]")
-        console.print(f"\n  {q['question']}\n")
+            header_suffix = f"  |  Difficulty: {'★' * current_difficulty}{'☆' * (3 - current_difficulty)}"
 
-        start = time.time()
-        try:
-            answer = console.input("[bold green]> [/bold green]")
-        except (KeyboardInterrupt, EOFError):
-            console.print("\n[dim]quitting...[/dim]")
+        result = _ask_question(q, i, num_questions, score, streak, header_suffix=header_suffix)
+        if result is None:
             return
-
-        elapsed = time.time() - start
-        correct = _check_answer(answer, q)
-        qt = q.get("question_type", "")
+        correct, elapsed = result
 
         if correct:
             score += 1
             streak += 1
             best_streak = max(best_streak, streak)
-
-            speed_msg = ""
-            if elapsed < 2:
-                speed_msg = " ⚡ lightning fast!"
-            elif elapsed < 5:
-                speed_msg = " nice speed!"
-
-            console.print(
-                f"  [bold green]✓ Correct![/bold green] "
-                f"[dim]({elapsed:.1f}s){speed_msg}[/dim]"
-            )
         else:
             streak = 0
-            console.print(
-                f"  [bold red]✗ Wrong.[/bold red] "
-                f"Answer was [bold]{q['answer']}[/bold]  "
-                f"[dim]({elapsed:.1f}s)[/dim]"
-            )
-        console.print()
 
         results.append({
             "category": q["category"],
-            "question_type": qt,
+            "question_type": q.get("question_type", ""),
             "question": q["question"],
             "correct": correct,
             "time": elapsed,
@@ -173,7 +190,6 @@ def _show_summary(results, score, total, best_streak):
     table.add_row("Avg time", f"{avg_time:.1f}s")
     table.add_row("Best streak", f"{best_streak} 🔥" if best_streak >= 2 else str(best_streak))
 
-    # per-category breakdown
     cats = {}
     for r in results:
         cat = r["category"]
@@ -197,7 +213,6 @@ def run_review(difficulty=1):
     due = get_due_reviews()
 
     if not due:
-        # try seeding from history if this is a first-time review user
         seeded = seed_review_from_history()
         if seeded:
             due = get_due_reviews()
@@ -233,45 +248,17 @@ def run_review(difficulty=1):
     for i, qt in enumerate(due, 1):
         q = question_by_type(qt, difficulty)
 
-        console.rule(style="dim")
-        header = _header(i, len(due), score, streak)
-        console.print(header)
-        console.print(f"\n  [bold yellow]{q['category']}[/bold yellow]  [dim](review)[/dim]")
-        console.print(f"\n  {q['question']}\n")
-
-        start = time.time()
-        try:
-            answer = console.input("[bold green]> [/bold green]")
-        except (KeyboardInterrupt, EOFError):
-            console.print("\n[dim]quitting...[/dim]")
+        result = _ask_question(q, i, len(due), score, streak, label_suffix="(review)")
+        if result is None:
             return
-
-        elapsed = time.time() - start
-        correct = _check_answer(answer, q)
+        correct, elapsed = result
 
         if correct:
             score += 1
             streak += 1
             best_streak = max(best_streak, streak)
-
-            speed_msg = ""
-            if elapsed < 2:
-                speed_msg = " ⚡ lightning fast!"
-            elif elapsed < 5:
-                speed_msg = " nice speed!"
-
-            console.print(
-                f"  [bold green]✓ Correct![/bold green] "
-                f"[dim]({elapsed:.1f}s){speed_msg}[/dim]"
-            )
         else:
             streak = 0
-            console.print(
-                f"  [bold red]✗ Wrong.[/bold red] "
-                f"Answer was [bold]{q['answer']}[/bold]  "
-                f"[dim]({elapsed:.1f}s)[/dim]"
-            )
-        console.print()
 
         update_review_card(qt, correct)
         results.append({
