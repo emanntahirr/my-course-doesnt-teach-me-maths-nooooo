@@ -1,12 +1,12 @@
 import time
 from rich.console import Console
 from rich.panel import Panel
-from rich.text import Text
 from rich.table import Table
-from mathdrill.questions import random_question, weakspot_question, question_by_type, CATEGORIES
+from mathdrill.questions import random_question, weakspot_question, question_by_type
 from mathdrill.stats import (
-    save_session, save_question_results, streak_message, get_weak_categories,
-    update_review_card, get_due_reviews, seed_review_from_history,
+    save_results, streak_message, get_weak_categories,
+    update_review_card, update_review_cards_batch,
+    get_due_reviews, seed_review_from_history,
 )
 
 console = Console()
@@ -129,8 +129,6 @@ def run_drill(num_questions=5, difficulty=1, category=None, adaptive=False, weak
                 f"[dim]({elapsed:.1f}s)[/dim]"
             )
         console.print()
-        if qt:
-            update_review_card(qt, correct)
 
         results.append({
             "category": q["category"],
@@ -141,8 +139,8 @@ def run_drill(num_questions=5, difficulty=1, category=None, adaptive=False, weak
         })
 
     avg_time = sum(r["time"] for r in results) / len(results)
-    save_session(score, num_questions, difficulty, category, avg_time)
-    save_question_results(results)
+    save_results(score, num_questions, difficulty, category, avg_time, results)
+    update_review_cards_batch(results)
     _show_summary(results, score, num_questions, best_streak)
 
 
@@ -285,6 +283,5 @@ def run_review(difficulty=1):
         })
 
     avg_time = sum(r["time"] for r in results) / len(results)
-    save_session(score, len(due), difficulty, "review", avg_time)
-    save_question_results(results)
+    save_results(score, len(due), difficulty, "review", avg_time, results)
     _show_summary(results, score, len(due), best_streak)

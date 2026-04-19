@@ -20,7 +20,7 @@ def load_history():
         return json.load(f)
 
 
-def save_session(score, total, difficulty, category, avg_time):
+def save_results(score, total, difficulty, category, avg_time, question_results):
     _ensure_data_dir()
     history = load_history()
     history["sessions"].append({
@@ -31,22 +31,16 @@ def save_session(score, total, difficulty, category, avg_time):
         "category": category,
         "avg_time": round(avg_time, 1),
     })
-    with open(HISTORY_FILE, "w") as f:
-        json.dump(history, f, indent=2)
-
-
-def save_question_results(question_results):
-    _ensure_data_dir()
-    history = load_history()
     if "questions" not in history:
         history["questions"] = []
+    today = date.today().isoformat()
     for r in question_results:
         entry = {
-            "date": date.today().isoformat(),
+            "date": today,
             "category": r["category"],
             "correct": r["correct"],
         }
-        if "question_type" in r:
+        if r.get("question_type"):
             entry["question_type"] = r["question_type"]
         history["questions"].append(entry)
     with open(HISTORY_FILE, "w") as f:
@@ -82,23 +76,19 @@ def get_weak_categories():
     return weak if weak else None
 
 
-def get_streak():
-    history = load_history()
-    if not history["sessions"]:
+def _compute_streak(sessions):
+    if not sessions:
         return 0
 
-    practice_dates = {s["date"] for s in history["sessions"]}
+    practice_dates = {s["date"] for s in sessions}
     today = date.today()
     streak = 0
 
-    # check today first, then go backwards
     day = today
     while day.isoformat() in practice_dates:
         streak += 1
         day -= timedelta(days=1)
 
-    # if the user hasn't practiced today yet, check streak
-    # ending yesterday so we can still show their active streak
     if streak == 0:
         day = today - timedelta(days=1)
         while day.isoformat() in practice_dates:
@@ -108,6 +98,11 @@ def get_streak():
     return streak
 
 
+def get_streak():
+    history = load_history()
+    return _compute_streak(history["sessions"])
+
+
 def practiced_today():
     history = load_history()
     today = date.today().isoformat()
@@ -115,8 +110,11 @@ def practiced_today():
 
 
 def streak_message():
-    streak = get_streak()
-    today_done = practiced_today()
+    history = load_history()
+    sessions = history["sessions"]
+    streak = _compute_streak(sessions)
+    today = date.today().isoformat()
+    today_done = any(s["date"] == today for s in sessions)
 
     if streak == 0:
         return "First session! Start your streak today."
@@ -156,22 +154,7 @@ def _save_review_cards(cards):
         json.dump(cards, f, indent=2)
 
 
-def update_review_card(question_type, correct):
-    """Update SM-2 data for a question type after answering it."""
-    cards = _load_review_cards()
-    today = date.today().isoformat()
-
-    if question_type not in cards:
-        cards[question_type] = {
-            "ef": 2.5,
-            "interval": 1,
-            "repetitions": 0,
-            "next_review": today,
-        }
-
-    card = cards[question_type]
-
-    # SM-2: quality 4 for correct, 1 for wrong
+def _apply_sm2(card, correct):
     q = 4 if correct else 1
     card["ef"] = max(1.3, card["ef"] + 0.1 - (5 - q) * (0.08 + (5 - q) * 0.02))
 
@@ -187,10 +170,36 @@ def update_review_card(question_type, correct):
         card["repetitions"] = 0
         card["interval"] = 1
 
-    next_date = date.today() + timedelta(days=card["interval"])
-    card["next_review"] = next_date.isoformat()
+    card["next_review"] = (date.today() + timedelta(days=card["interval"])).isoformat()
 
-    cards[question_type] = card
+
+def update_review_card(question_type, correct):
+    cards = _load_review_cards()
+    today = date.today().isoformat()
+
+    if question_type not in cards:
+        cards[question_type] = {
+            "ef": 2.5, "interval": 1, "repetitions": 0, "next_review": today,
+        }
+
+    _apply_sm2(cards[question_type], correct)
+    _save_review_cards(cards)
+
+
+def update_review_cards_batch(results):
+    cards = _load_review_cards()
+    today = date.today().isoformat()
+
+    for r in results:
+        qt = r.get("question_type", "")
+        if not qt:
+            continue
+        if qt not in cards:
+            cards[qt] = {
+                "ef": 2.5, "interval": 1, "repetitions": 0, "next_review": today,
+            }
+        _apply_sm2(cards[qt], r["correct"])
+
     _save_review_cards(cards)
 
 
@@ -213,7 +222,6 @@ def seed_review_from_history():
 
     cards = _load_review_cards()
     seeded = 0
-    # group by question_type if present, otherwise by category
     type_stats = {}
     for q in questions:
         qt = q.get("question_type")
