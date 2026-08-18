@@ -469,6 +469,109 @@ def probability(difficulty=1):
             }
 
 
+# ── bayes ───────────────────────────────────────────────────────────
+
+def _bayes_counts(pop, prevalence_den, accuracy):
+    # true positives and false positives out of a population of pop
+    have = pop // prevalence_den
+    healthy = pop - have
+    true_pos = have * accuracy // 100
+    false_pos = healthy * (100 - accuracy) // 100
+    return true_pos, false_pos
+
+
+def bayes(difficulty=1):
+    if difficulty == 1:
+        prevalence_den, accuracy, pop = 100, 90, 10_000
+    elif difficulty == 2:
+        prevalence_den, accuracy, pop = 1_000, 95, 100_000
+    else:
+        prevalence_den, accuracy, pop = 10_000, 99, 1_000_000
+
+    condition = random.choice(["a rare disease", "a genetic marker", "a manufacturing defect"])
+    setup = f"1 in {prevalence_den:,} have {condition}. A test is {accuracy}% accurate in both directions."
+    true_pos, false_pos = _bayes_counts(pop, prevalence_den, accuracy)
+    total_pos = true_pos + false_pos
+
+    if random.random() < 0.5:
+        return {
+            "category": "Bayes",
+            "question_type": "bayes_count",
+            "question": f"{setup} Of {pop:,} tested, how many test positive in total?",
+            "answer": total_pos,
+        }
+
+    return {
+        "category": "Bayes",
+        "question_type": "bayes_percent",
+        "question": f"{setup} You test positive. What is P(you have it)? Answer as a percentage to 1 decimal place.",
+        "answer": round(100 * true_pos / total_pos, 1),
+        "float_answer": True,
+        "tolerance": 0.15,
+    }
+
+
+# ── conditioning ────────────────────────────────────────────────────
+
+def conditioning(difficulty=1):
+    # "at least one" and "this specific one" give different answers, that's the whole point
+    if difficulty == 1:
+        if random.random() < 0.5:
+            return {
+                "category": "Conditioning",
+                "question_type": "cond_at_least_two",
+                "question": "A family has 2 children. At least one is a girl. What is P(both are girls)? (fraction)",
+                "answer": "1/3",
+                "string_answer": True,
+            }
+        return {
+            "category": "Conditioning",
+            "question_type": "cond_specific_two",
+            "question": "A family has 2 children. The elder is a girl. What is P(both are girls)? (fraction)",
+            "answer": "1/2",
+            "string_answer": True,
+        }
+
+    if difficulty == 2:
+        sides = random.choice([4, 6, 8])
+        k = _rand(1, sides)
+        if random.random() < 0.5:
+            return {
+                "category": "Conditioning",
+                "question_type": "cond_at_least_dice",
+                "question": f"Two fair {sides}-sided dice. At least one shows a {k}. What is P(both show {k})? (fraction)",
+                "answer": f"1/{2 * sides - 1}",
+                "string_answer": True,
+            }
+        return {
+            "category": "Conditioning",
+            "question_type": "cond_specific_dice",
+            "question": f"Two fair {sides}-sided dice. The first shows a {k}. What is P(both show {k})? (fraction)",
+            "answer": f"1/{sides}",
+            "string_answer": True,
+        }
+
+    if random.random() < 0.5:
+        n = _rand(3, 4)
+        # (1/2^n) / (1 - 1/2^n) simplifies to 1/(2^n - 1)
+        return {
+            "category": "Conditioning",
+            "question_type": "cond_at_least_n",
+            "question": f"A family has {n} children. At least one is a girl. What is P(all {n} are girls)? (fraction)",
+            "answer": f"1/{2 ** n - 1}",
+            "string_answer": True,
+        }
+
+    doors = _rand(3, 8)
+    return {
+        "category": "Conditioning",
+        "question_type": "cond_monty",
+        "question": f"{doors} doors, one prize. You pick one. The host knows where the prize is and opens {doors - 2} empty doors. You switch. What is P(you win)? (fraction)",
+        "answer": f"{doors - 1}/{doors}",
+        "string_answer": True,
+    }
+
+
 # ── registry ─────────────────────────────────────────────────────────
 
 CATEGORIES = {
@@ -480,6 +583,8 @@ CATEGORIES = {
     "combinatorics": combinatorics,
     "logarithms": logarithms,
     "probability": probability,
+    "bayes": bayes,
+    "conditioning": conditioning,
 }
 
 
@@ -492,6 +597,8 @@ CATEGORY_DISPLAY_TO_KEY = {
     "Combinatorics": "combinatorics",
     "Logarithms": "logarithms",
     "Probability": "probability",
+    "Bayes": "bayes",
+    "Conditioning": "conditioning",
 }
 
 
@@ -516,6 +623,10 @@ QUESTION_TYPE_TO_GENERATOR = {
     "prob_coin": "probability", "prob_dice": "probability", "prob_draw": "probability",
     "prob_dice_sum": "probability", "prob_at_least": "probability", "prob_expected": "probability",
     "prob_conditional": "probability", "prob_combo": "probability", "prob_repeated": "probability",
+    "bayes_count": "bayes", "bayes_percent": "bayes",
+    "cond_at_least_two": "conditioning", "cond_specific_two": "conditioning",
+    "cond_at_least_dice": "conditioning", "cond_specific_dice": "conditioning",
+    "cond_at_least_n": "conditioning", "cond_monty": "conditioning",
 }
 
 
