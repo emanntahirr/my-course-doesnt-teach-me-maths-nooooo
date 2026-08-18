@@ -50,6 +50,11 @@ def main():
         action="store_true",
         help="spaced repetition review of question types you've seen before",
     )
+    parser.add_argument(
+        "--focus",
+        action="store_true",
+        help="only the categories that show up in aptitude and reasoning tests",
+    )
 
     args = parser.parse_args()
 
@@ -67,6 +72,7 @@ def main():
         category=args.category,
         adaptive=args.adaptive,
         weakspot=args.weakspot,
+        focus=args.focus,
     )
 
 

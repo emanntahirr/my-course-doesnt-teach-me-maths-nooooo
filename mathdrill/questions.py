@@ -719,11 +719,24 @@ CATEGORY_DISPLAY_TO_KEY = {
 }
 
 
-def random_question(difficulty=1, category=None):
+# bitwise, base and logarithms are competitive-coding stuff, not aptitude test stuff
+FOCUS_CATEGORIES = [
+    "probability",
+    "bayes",
+    "conditioning",
+    "expected",
+    "percentages",
+    "combinatorics",
+    "modular",
+]
+
+
+def random_question(difficulty=1, category=None, pool=None):
     if category and category in CATEGORIES:
         gen = CATEGORIES[category]
     else:
-        gen = random.choice(list(CATEGORIES.values()))
+        keys = pool or list(CATEGORIES.keys())
+        gen = CATEGORIES[random.choice(keys)]
     return gen(difficulty)
 
 
@@ -763,22 +776,22 @@ def question_by_type(question_type, difficulty=1):
     return gen(difficulty)
 
 
-def weakspot_question(difficulty=1, weak_categories=None):
+def weakspot_question(difficulty=1, weak_categories=None, pool=None):
     if not weak_categories:
-        return random_question(difficulty)
+        return random_question(difficulty, pool=pool)
 
     # map display names back to keys
     weak_keys = []
     for cat in weak_categories:
         key = CATEGORY_DISPLAY_TO_KEY.get(cat, cat)
-        if key in CATEGORIES:
+        if key in CATEGORIES and (pool is None or key in pool):
             weak_keys.append(key)
 
     if not weak_keys:
-        return random_question(difficulty)
+        return random_question(difficulty, pool=pool)
 
     # 70% chance to pick from a weak category, 30% random
     if random.random() < 0.7:
         key = random.choice(weak_keys)
         return CATEGORIES[key](difficulty)
-    return random_question(difficulty)
+    return random_question(difficulty, pool=pool)

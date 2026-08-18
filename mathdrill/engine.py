@@ -2,7 +2,9 @@ import time
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from mathdrill.questions import random_question, weakspot_question, question_by_type
+from mathdrill.questions import (
+    random_question, weakspot_question, question_by_type, FOCUS_CATEGORIES,
+)
 from mathdrill.stats import (
     save_results, streak_message, get_weak_categories,
     update_review_card, update_review_cards_batch,
@@ -28,7 +30,7 @@ def _check_answer(user_input, question):
         return user_input.lower() == str(question["answer"]).lower()
     if question.get("float_answer"):
         try:
-            # let people type 1,234.5 or 12% or £12 without it counting as wrong
+            # accept 1,234.5 and 12% as well as a bare number
             cleaned = user_input.replace(",", "").replace("%", "").replace("£", "")
             return abs(float(cleaned) - question["answer"]) <= question.get("tolerance", 0.01)
         except ValueError:
@@ -94,7 +96,8 @@ def _adapt_difficulty(current, recent_results):
     return current
 
 
-def run_drill(num_questions=5, difficulty=1, category=None, adaptive=False, weakspot=False):
+def run_drill(num_questions=5, difficulty=1, category=None, adaptive=False, weakspot=False,
+              focus=False):
     console.clear()
     console.print()
     smsg = streak_message()
@@ -103,15 +106,23 @@ def run_drill(num_questions=5, difficulty=1, category=None, adaptive=False, weak
     if weakspot:
         weak_cats = get_weak_categories()
 
+    pool = FOCUS_CATEGORIES if focus else None
+
     mode = "adaptive" if adaptive else f"difficulty {'★' * difficulty}{'☆' * (3 - difficulty)}"
     if weakspot:
         mode += "  •  weak spot targeting"
+    if category:
+        scope = category
+    elif focus:
+        scope = "reasoning-test categories"
+    else:
+        scope = "all categories"
     console.print(
         Panel(
             "[bold magenta]MATH DRILL[/bold magenta]\n"
             f"[dim]{num_questions} questions  •  "
             f"{mode}  •  "
-            f"{'all categories' if not category else category}[/dim]\n"
+            f"{scope}[/dim]\n"
             f"{smsg}",
             border_style="bright_magenta",
         )
@@ -134,9 +145,9 @@ def run_drill(num_questions=5, difficulty=1, category=None, adaptive=False, weak
             current_difficulty = _adapt_difficulty(current_difficulty, results)
 
         if weakspot and not category:
-            q = weakspot_question(current_difficulty, weak_cats)
+            q = weakspot_question(current_difficulty, weak_cats, pool=pool)
         else:
-            q = random_question(current_difficulty, category)
+            q = random_question(current_difficulty, category, pool=pool)
 
         header_suffix = ""
         if adaptive:
