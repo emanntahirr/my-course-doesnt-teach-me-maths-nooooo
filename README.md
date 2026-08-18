@@ -42,11 +42,13 @@ by default you get 5 questions at difficulty 1 across all categories.
 
 `--review` spaced repetition mode. uses SM-2 to schedule review of question types you've seen before. questions you get wrong come back sooner, ones you nail get pushed further out
 
+`--focus` drops bitwise, base conversion and logarithms and only asks the stuff that turns up in aptitude tests
+
 `--stats` view your practice history, streak, and accuracy
 
 ## categories
 
-`modular` `gcd` `bitwise` `base` `primes` `combinatorics` `logarithms` `probability`
+`modular` `gcd` `bitwise` `base` `primes` `combinatorics` `logarithms` `probability` `bayes` `conditioning` `expected` `percentages`
 
 ## examples
 
