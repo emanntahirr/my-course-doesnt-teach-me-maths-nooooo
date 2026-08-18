@@ -26,8 +26,15 @@ def _check_answer(user_input, question):
     user_input = user_input.strip()
     if question.get("string_answer"):
         return user_input.lower() == str(question["answer"]).lower()
+    if question.get("float_answer"):
+        try:
+            # let people type 1,234.5 or 12% or £12 without it counting as wrong
+            cleaned = user_input.replace(",", "").replace("%", "").replace("£", "")
+            return abs(float(cleaned) - question["answer"]) <= question.get("tolerance", 0.01)
+        except ValueError:
+            return False
     try:
-        return int(user_input) == question["answer"]
+        return int(user_input.replace(",", "")) == question["answer"]
     except ValueError:
         return False
 
