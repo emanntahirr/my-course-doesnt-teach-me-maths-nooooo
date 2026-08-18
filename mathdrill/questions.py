@@ -572,6 +572,119 @@ def conditioning(difficulty=1):
     }
 
 
+# ── expected value ──────────────────────────────────────────────────
+
+def _optimal_stopping_ev(sides, rolls):
+    # work backwards from the last roll, keep a face only if it beats what a reroll is worth
+    ev = (sides + 1) / 2
+    for _ in range(rolls - 1):
+        keep = [v for v in range(1, sides + 1) if v > ev]
+        ev = (sum(keep) + (sides - len(keep)) * ev) / sides
+    return ev
+
+
+def expected_value(difficulty=1):
+    if difficulty == 1:
+        win = _rand(2, 10) * 10
+        lose = _rand(1, 5) * 10
+        favourable = _rand(1, 5)
+        total = favourable + _rand(1, 5)
+        ev = (favourable * win - (total - favourable) * lose) / total
+        return {
+            "category": "Expected Value",
+            "question_type": "ev_game",
+            "question": f"A game pays {win} with probability {favourable}/{total} and costs you {lose} otherwise. Expected value to 2 decimal places?",
+            "answer": round(ev, 2),
+            "float_answer": True,
+            "tolerance": 0.02,
+        }
+
+    sides = 6 if difficulty == 2 else random.choice([4, 6, 8, 10])
+    rolls = 2 if difficulty == 2 else _rand(2, 4)
+    return {
+        "category": "Expected Value",
+        "question_type": "ev_reroll",
+        "question": f"Roll a fair {sides}-sided die, take the value or reroll. At most {rolls} rolls, you must take the last. Playing optimally, expected value to 2 decimal places?",
+        "answer": round(_optimal_stopping_ev(sides, rolls), 2),
+        "float_answer": True,
+        "tolerance": 0.02,
+    }
+
+
+# ── percentages and ratios ──────────────────────────────────────────
+
+def percentages(difficulty=1):
+    if difficulty == 1:
+        variants = ["pct_of", "pct_change"]
+    elif difficulty == 2:
+        variants = ["pct_change", "pct_reverse", "ratio_split"]
+    else:
+        variants = ["pct_reverse", "pct_compound", "ratio_split"]
+    variant = random.choice(variants)
+
+    if variant == "pct_of":
+        pct = random.choice([5, 10, 15, 20, 25, 40, 60, 75])
+        n = _rand(2, 40) * 20
+        return {
+            "category": "Percentages",
+            "question_type": "pct_of",
+            "question": f"What is {pct}% of {n:,}?",
+            "answer": round(n * pct / 100, 2),
+            "float_answer": True,
+            "tolerance": 0.01,
+        }
+
+    if variant == "pct_change":
+        before = _rand(2, 50) * 20
+        after = _rand(2, 50) * 20
+        while after == before:
+            after = _rand(2, 50) * 20
+        return {
+            "category": "Percentages",
+            "question_type": "pct_change",
+            "question": f"Revenue moved from {before:,} to {after:,}. Percentage change to 1 decimal place, negative for a fall?",
+            "answer": round(100 * (after - before) / before, 1),
+            "float_answer": True,
+            "tolerance": 0.1,
+        }
+
+    if variant == "pct_reverse":
+        pct = random.choice([8, 10, 12, 15, 20, 25])
+        before = _rand(5, 60) * 20
+        direction = random.choice(["rise", "fall"])
+        after = before * (1 + pct / 100) if direction == "rise" else before * (1 - pct / 100)
+        return {
+            "category": "Percentages",
+            "question_type": "pct_reverse",
+            "question": f"After a {pct}% {direction} a figure stands at {after:,.2f}. What was it before? 2 decimal places.",
+            "answer": round(before, 2),
+            "float_answer": True,
+            "tolerance": 0.05,
+        }
+
+    if variant == "pct_compound":
+        up = random.choice([10, 20, 25, 30, 50])
+        down = random.choice([10, 20, 25, 30, 50])
+        net = 100 * ((1 + up / 100) * (1 - down / 100) - 1)
+        return {
+            "category": "Percentages",
+            "question_type": "pct_compound",
+            "question": f"A value rises {up}% then falls {down}%. Net percentage change to 1 decimal place, negative for a fall?",
+            "answer": round(net, 1),
+            "float_answer": True,
+            "tolerance": 0.1,
+        }
+
+    a, b = _rand(1, 9), _rand(1, 9)
+    total = (a + b) * _rand(3, 40)
+    return {
+        "category": "Percentages",
+        "question_type": "ratio_split",
+        "question": f"Split {total:,} in the ratio {a}:{b}. What is the larger share?",
+        "answer": total * max(a, b) // (a + b),
+    }
+
+
 # ── registry ─────────────────────────────────────────────────────────
 
 CATEGORIES = {
@@ -585,6 +698,8 @@ CATEGORIES = {
     "probability": probability,
     "bayes": bayes,
     "conditioning": conditioning,
+    "expected": expected_value,
+    "percentages": percentages,
 }
 
 
@@ -599,6 +714,8 @@ CATEGORY_DISPLAY_TO_KEY = {
     "Probability": "probability",
     "Bayes": "bayes",
     "Conditioning": "conditioning",
+    "Expected Value": "expected",
+    "Percentages": "percentages",
 }
 
 
@@ -627,6 +744,9 @@ QUESTION_TYPE_TO_GENERATOR = {
     "cond_at_least_two": "conditioning", "cond_specific_two": "conditioning",
     "cond_at_least_dice": "conditioning", "cond_specific_dice": "conditioning",
     "cond_at_least_n": "conditioning", "cond_monty": "conditioning",
+    "ev_game": "expected", "ev_reroll": "expected",
+    "pct_of": "percentages", "pct_change": "percentages", "pct_reverse": "percentages",
+    "pct_compound": "percentages", "ratio_split": "percentages",
 }
 
 
